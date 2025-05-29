@@ -18,8 +18,10 @@ from utilities.constants import (
     TIMEOUT_2MIN,
     TIMEOUT_3MIN,
     TIMEOUT_5MIN,
+    OS_FLAVOR_FEDORA,
     Images,
 )
+FEDORA_VM_MEMORY_SIZE = Images.Fedora.DEFAULT_MEMORY_SIZE
 from utilities.storage import check_disk_count_in_vm, get_downloaded_artifact
 
 LOGGER = logging.getLogger(__name__)
@@ -95,7 +97,7 @@ def test_upload_https_scratch_space_delete_pvc(
         source="upload",
         dv_name=dv_name,
         namespace=namespace.name,
-        size="3Gi",
+        size="6Gi",
         storage_class=storage_class_name_scope_module,
     ) as dv:
         # Blocks test until we get the return value indicating that scratch pvc reached 'Bound'
@@ -119,6 +121,6 @@ def test_upload_https_scratch_space_delete_pvc(
                 if sample == 200:
                     dv.scratch_pvc.delete()
                     dv.wait_for_dv_success(timeout=TIMEOUT_5MIN)
-                    with storage_utils.create_vm_from_dv(dv=dv) as vm_dv:
+                    with storage_utils.create_vm_from_dv(dv=dv,os_flavor=OS_FLAVOR_FEDORA,memory_guest=FEDORA_VM_MEMORY_SIZE,wait_for_cloud_init=True,start=True) as vm_dv:
                         check_disk_count_in_vm(vm=vm_dv)
                     return
