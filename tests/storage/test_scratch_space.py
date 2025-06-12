@@ -97,7 +97,7 @@ def test_upload_https_scratch_space_delete_pvc(
         source="upload",
         dv_name=dv_name,
         namespace=namespace.name,
-        size="6Gi",
+        size="10Gi",
         storage_class=storage_class_name_scope_module,
     ) as dv:
         # Blocks test until we get the return value indicating that scratch pvc reached 'Bound'
