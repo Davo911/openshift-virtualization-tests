@@ -165,6 +165,7 @@ class TestHotPlugWithSerial:
     @pytest.mark.sno
     @pytest.mark.polarion("CNV-6013")
     @pytest.mark.dependency(name="test_hotplug_volume_with_serial")
+    @pytest.mark.mystorage
     def test_hotplug_volume_with_serial(
         self,
         blank_disk_dv_multi_storage_scope_class,
@@ -198,6 +199,7 @@ class TestHotPlugWithPersist:
     @pytest.mark.sno
     @pytest.mark.polarion("CNV-6014")
     @pytest.mark.dependency(name="test_hotplug_volume_with_persist")
+    @pytest.mark.mystorage
     def test_hotplug_volume_with_persist(
         self,
         blank_disk_dv_multi_storage_scope_class,
@@ -231,6 +233,7 @@ class TestHotPlugWithSerialPersist:
     @pytest.mark.sno
     @pytest.mark.polarion("CNV-6425")
     @pytest.mark.dependency(name="test_hotplug_volume_with_persist")
+    @pytest.mark.mystorage
     def test_hotplug_volume_with_serial_and_persist(
         self,
         blank_disk_dv_multi_storage_scope_class,

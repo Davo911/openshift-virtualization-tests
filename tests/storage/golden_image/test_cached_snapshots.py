@@ -260,5 +260,6 @@ def test_disable_automatic_update_using_annotation(
     ],
     indirect=True,
 )
+@pytest.mark.mystorage
 def test_unprivileged_user_vm_snapshot_datasource(rhel9_golden_image_vm):
     running_vm(vm=rhel9_golden_image_vm)

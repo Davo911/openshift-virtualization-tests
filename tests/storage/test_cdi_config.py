@@ -16,8 +16,7 @@ from tests.storage.utils import (
     upload_image_to_dv,
     upload_token_request,
 )
-from utilities.constants import CDI_UPLOADPROXY, Images, StorageClassNames, OS_FLAVOR_FEDORA
-FEDORA_VM_MEMORY_SIZE = Images.Fedora.DEFAULT_MEMORY_SIZE
+from utilities.constants import CDI_UPLOADPROXY, OS_FLAVOR_FEDORA, Images, StorageClassNames
 from utilities.hco import ResourceEditorValidateHCOReconcile
 from utilities.storage import (
     cdi_feature_gate_list_with_added_feature,
@@ -30,6 +29,7 @@ from utilities.storage import (
     wait_for_default_sc_in_cdiconfig,
 )
 
+FEDORA_VM_MEMORY_SIZE = Images.Fedora.DEFAULT_MEMORY_SIZE
 pytestmark = pytest.mark.post_upgrade
 
 LOGGER = logging.getLogger(__name__)
@@ -57,7 +57,9 @@ def cdiconfig_update(
 ):
     def _create_vm_check_disk_count(dv):
         dv.wait_for_dv_success()
-        with create_vm_from_dv(dv=dv,os_flavor=OS_FLAVOR_FEDORA,  memory_guest=FEDORA_VM_MEMORY_SIZE,wait_for_cloud_init=True) as vm_dv:
+        with create_vm_from_dv(
+            dv=dv, os_flavor=OS_FLAVOR_FEDORA, memory_guest=FEDORA_VM_MEMORY_SIZE, wait_for_cloud_init=True
+        ) as vm_dv:
             check_disk_count_in_vm(vm=vm_dv)
 
     with ResourceEditorValidateHCOReconcile(
@@ -114,6 +116,7 @@ def initial_cdi_config_from_cr(cdi):
 
 @pytest.mark.sno
 @pytest.mark.polarion("CNV-2451")
+@pytest.mark.mystorage
 def test_cdiconfig_scratchspace_fs_upload_to_block(
     available_hpp_storage_class,
     tmpdir,
@@ -140,6 +143,7 @@ def test_cdiconfig_scratchspace_fs_upload_to_block(
 
 @pytest.mark.sno
 @pytest.mark.polarion("CNV-2478")
+@pytest.mark.mystorage
 def test_cdiconfig_scratchspace_fs_import_to_block(
     available_hpp_storage_class,
     hyperconverged_resource_scope_module,
@@ -186,6 +190,7 @@ def test_cdiconfig_status_scratchspace_update_with_spec(
 
 @pytest.mark.sno
 @pytest.mark.polarion("CNV-2440")
+@pytest.mark.mystorage
 def test_cdiconfig_scratch_space_not_default(
     available_hpp_storage_class,
     hyperconverged_resource_scope_module,
@@ -253,6 +258,7 @@ def test_upload_proxy_url_overridden(cdi_config, namespace, cdi_config_upload_pr
 
 @pytest.mark.sno
 @pytest.mark.polarion("CNV-2441")
+@pytest.mark.mystorage
 def test_cdiconfig_changing_storage_class_default(
     skip_test_if_no_ocs_sc,
     available_hpp_storage_class,
@@ -281,7 +287,9 @@ def test_cdiconfig_changing_storage_class_default(
                     cert_configmap=configmap.name,
                 ) as dv:
                     dv.wait_for_dv_success()
-                    with create_vm_from_dv(dv=dv,os_flavor=OS_FLAVOR_FEDORA,  memory_guest=FEDORA_VM_MEMORY_SIZE,wait_for_cloud_init=True) as vm_dv:
+                    with create_vm_from_dv(
+                        dv=dv, os_flavor=OS_FLAVOR_FEDORA, memory_guest=FEDORA_VM_MEMORY_SIZE, wait_for_cloud_init=True
+                    ) as vm_dv:
                         check_disk_count_in_vm(vm=vm_dv)
 
 

@@ -8,8 +8,6 @@ import pytest
 from ocp_resources.datavolume import DataVolume
 
 from tests.storage.constants import ADMIN_NAMESPACE_PARAM
-from utilities.constants import  OS_FLAVOR_FEDORA, Images
-FEDORA_VM_MEMORY_SIZE = Images.Fedora.DEFAULT_MEMORY_SIZE
 from tests.storage.restricted_namespace_cloning.constants import (
     ALL,
     CREATE,
@@ -26,7 +24,11 @@ from tests.storage.restricted_namespace_cloning.constants import (
 )
 from tests.storage.restricted_namespace_cloning.utils import create_dv_negative, verify_snapshot_used_namespace_transfer
 from tests.storage.utils import verify_vm_disk_image_permission
+from utilities.constants import OS_FLAVOR_FEDORA, Images
 from utilities.storage import create_vm_from_dv
+
+FEDORA_VM_MEMORY_SIZE = Images.Fedora.DEFAULT_MEMORY_SIZE
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -49,6 +51,7 @@ pytestmark = pytest.mark.usefixtures("fail_when_no_unprivileged_client_available
     ],
     indirect=True,
 )
+@pytest.mark.mystorage
 def test_unprivileged_user_clone_dv_same_namespace_positive(
     permissions_pvc_source,
     dv_cloned_by_unprivileged_user_in_the_same_namespace,
@@ -85,6 +88,7 @@ def test_unprivileged_user_clone_dv_same_namespace_positive(
     ],
     indirect=True,
 )
+@pytest.mark.mystorage
 def test_user_permissions_positive(
     unprivileged_client,
     storage_class_matrix__module__,
@@ -95,7 +99,12 @@ def test_user_permissions_positive(
 ):
     verify_snapshot_used_namespace_transfer(cdv=dv_destination_cloned_from_pvc, unprivileged_client=unprivileged_client)
     if requested_verify_image_permissions:
-        with create_vm_from_dv(dv=dv_destination_cloned_from_pvc,os_flavor=OS_FLAVOR_FEDORA,  memory_guest=FEDORA_VM_MEMORY_SIZE,wait_for_cloud_init=True) as vm:
+        with create_vm_from_dv(
+            dv=dv_destination_cloned_from_pvc,
+            os_flavor=OS_FLAVOR_FEDORA,
+            memory_guest=FEDORA_VM_MEMORY_SIZE,
+            wait_for_cloud_init=True,
+        ) as vm:
             if (
                 storage_class_matrix__module__[storage_class_name_scope_module]["volume_mode"]
                 == DataVolume.VolumeMode.FILE
@@ -127,6 +136,7 @@ def test_user_permissions_positive(
     ],
     indirect=True,
 )
+@pytest.mark.mystorage
 def test_user_permissions_negative(
     storage_class_name_scope_module,
     namespace,
@@ -159,6 +169,7 @@ def test_user_permissions_negative(
     ],
     indirect=True,
 )
+@pytest.mark.mystorage
 def test_unprivileged_user_clone_same_namespace_negative(
     storage_class_name_scope_module,
     namespace,
@@ -189,6 +200,7 @@ def test_unprivileged_user_clone_same_namespace_negative(
     ],
     indirect=True,
 )
+@pytest.mark.mystorage
 def test_user_permissions_only_for_dst_ns_negative(
     storage_class_name_scope_module,
     data_volume_multi_storage_scope_module,
