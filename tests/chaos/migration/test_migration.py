@@ -84,7 +84,7 @@ def test_pod_delete_migration(
         filter_pods_by_name=pod_deleting_process["pod_prefix"],
     )
 
-
+@pytest.mark.s390x
 @pytest.mark.gpfs
 @pytest.mark.parametrize(
     "chaos_worker_background_process",
@@ -197,7 +197,7 @@ def test_pod_delete_storage_migration(
         initial_node=tainted_node_for_vm_chaos_rhel9_with_dv_migration,
     ), "The VMI has not been migrated to a different node."
 
-
+@pytest.mark.s390x
 @pytest.mark.gpfs
 @pytest.mark.parametrize(
     "chaos_worker_background_process",
@@ -246,11 +246,11 @@ def test_stress_migration_source_node(
         url=f"{vm_with_nginx_service.custom_service.instance.spec.clusterIPs[0]}:{PORT_80}",
     )
 
-
 @pytest.mark.xfail(
     reason=(f"{QUARANTINED}: Failed on teardown with kubernetes.client.exceptions.ApiException. Tracked in CNV-62939"),
     run=False,
 )
+@pytest.mark.s390x
 @pytest.mark.gpfs
 @pytest.mark.polarion("CNV-6120")
 def test_migration_reboot_source_node(
