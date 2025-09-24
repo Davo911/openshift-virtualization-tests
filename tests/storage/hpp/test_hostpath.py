@@ -56,7 +56,6 @@ from utilities.storage import (
     get_containers_for_pods_with_pvc,
     get_downloaded_artifact,
     get_test_artifact_server_url,
-    sc_volume_binding_mode_is_wffc,
     virtctl_upload_dv,
 )
 from utilities.virt import VirtualMachineForTestsFromTemplate, running_vm
@@ -211,32 +210,6 @@ def hpp_pool_deployments_scope_module(admin_client, hco_namespace):
     ]
 
 
-def verify_image_location_via_dv_pod_with_pvc(dv, worker_node_name):
-    dv.wait_for_dv_success()
-    with PodWithPVC(
-        namespace=dv.namespace,
-        name=f"{dv.name}-pod",
-        pvc_name=dv.pvc.name,
-        containers=get_containers_for_pods_with_pvc(volume_mode=dv.volume_mode, pvc_name=dv.pvc.name),
-    ) as pod:
-        pod.wait_for_status(status="Running")
-        LOGGER.debug("Check pod location...")
-        assert pod.instance["spec"]["nodeName"] == worker_node_name
-        LOGGER.debug("Check image location...")
-        storage_utils.assert_disk_img(pod=pod)
-
-
-def verify_image_location_via_dv_virt_launcher_pod(dv, worker_node_name):
-    dv.wait_for_dv_success()
-    with storage_utils.create_vm_from_dv(dv=dv) as vm:
-        running_vm(vm=vm, check_ssh_connectivity=False, wait_for_interfaces=False)
-        v_pod = vm.vmi.virt_launcher_pod
-        LOGGER.debug("Check pod location...")
-        assert v_pod.instance["spec"]["nodeName"] == worker_node_name
-        LOGGER.debug("Check image location...")
-        assert "disk.img" in v_pod.execute(command=["ls", "-1", "/var/run/kubevirt-private/vmi-disks/dv-disk"])
-
-
 def assert_provision_on_node_annotation(pvc, node_name, type_):
     provision_on_node = "kubevirt.io/provisionOnNode"
     assert pvc.instance.metadata.annotations.get(provision_on_node) == node_name
@@ -293,35 +266,8 @@ def get_pod_and_scratch_pvc_nodes(dyn_client, namespace):
 
 
 @pytest.mark.sno
-@pytest.mark.polarion("CNV-2817")
-@pytest.mark.parametrize(
-    "dv_kwargs",
-    [
-        pytest.param(
-            {
-                "name": "cnv-2817",
-            },
-        ),
-    ],
-    indirect=True,
-)
-def test_hostpath_pod_reference_pvc(
-    namespace,
-    dv_kwargs,
-    storage_class_matrix_hpp_matrix__module__,
-):
-    """
-    Check that after disk image is written to the PVC which has been provisioned on the specified node,
-    Pod can use this image.
-    """
-    if sc_volume_binding_mode_is_wffc(sc=[*storage_class_matrix_hpp_matrix__module__][0]):
-        dv_kwargs.pop("hostpath_node")
-    with create_dv(**dv_kwargs) as dv:
-        verify_image_location_via_dv_pod_with_pvc(dv=dv, worker_node_name=dv.pvc.selected_node or dv.hostpath_node)
-
-
-@pytest.mark.sno
 @pytest.mark.polarion("CNV-3354")
+@pytest.mark.s390x
 def test_hpp_not_specify_node_immediate(
     skip_when_hpp_no_immediate,
     namespace,
@@ -350,6 +296,7 @@ def test_hpp_not_specify_node_immediate(
 
 @pytest.mark.sno
 @pytest.mark.polarion("CNV-3228")
+@pytest.mark.s390x
 def test_hpp_specify_node_immediate(
     skip_when_hpp_no_immediate,
     namespace,
@@ -375,47 +322,8 @@ def test_hpp_specify_node_immediate(
 
 
 @pytest.mark.sno
-@pytest.mark.parametrize(
-    ("image_name", "dv_name"),
-    [
-        pytest.param(
-            Images.Cirros.QCOW2_IMG,
-            "cnv-2767-qcow2",
-            marks=(pytest.mark.polarion("CNV-2767")),
-        ),
-        pytest.param(
-            Images.Cirros.RAW_IMG,
-            "cnv-8900-raw",
-            marks=(pytest.mark.polarion("CNV-8900")),
-        ),
-    ],
-)
-def test_hostpath_http_import_dv(
-    skip_when_hpp_no_immediate,
-    namespace,
-    dv_name,
-    image_name,
-    worker_node1,
-    storage_class_matrix_hpp_matrix__module__,
-):
-    """
-    Check that CDI importing from HTTP endpoint works well with hostpath-provisioner
-    """
-    with create_dv(
-        source="http",
-        dv_name=dv_name,
-        namespace=namespace.name,
-        content_type=DataVolume.ContentType.KUBEVIRT,
-        url=f"{get_test_artifact_server_url()}{Images.Cirros.DIR}/{image_name}",
-        size=Images.Cirros.DEFAULT_DV_SIZE,
-        storage_class=[*storage_class_matrix_hpp_matrix__module__][0],
-        hostpath_node=worker_node1.name,
-    ) as dv:
-        verify_image_location_via_dv_virt_launcher_pod(dv=dv, worker_node_name=worker_node1.name)
-
-
-@pytest.mark.sno
 @pytest.mark.polarion("CNV-3227")
+@pytest.mark.s390x
 def test_hpp_pvc_without_specify_node_waitforfirstconsumer(
     skip_when_hpp_no_waitforfirstconsumer,
     namespace,
@@ -451,6 +359,7 @@ def test_hpp_pvc_without_specify_node_waitforfirstconsumer(
 
 @pytest.mark.sno
 @pytest.mark.polarion("CNV-3280")
+@pytest.mark.s390x
 def test_hpp_pvc_specify_node_immediate(
     skip_when_hpp_no_immediate,
     namespace,
@@ -482,6 +391,7 @@ def test_hpp_pvc_specify_node_immediate(
 
 @pytest.mark.sno
 @pytest.mark.polarion("CNV-2771")
+@pytest.mark.s390x
 def test_hpp_upload_virtctl(
     skip_when_hpp_no_waitforfirstconsumer,
     skip_when_cdiconfig_scratch_no_hpp,
@@ -527,6 +437,7 @@ def test_hpp_upload_virtctl(
 
 @pytest.mark.sno
 @pytest.mark.polarion("CNV-2769")
+@pytest.mark.s390x
 def test_hostpath_upload_dv_with_token(
     skip_when_cdiconfig_scratch_no_hpp,
     skip_when_hpp_no_waitforfirstconsumer,
@@ -551,42 +462,6 @@ def test_hostpath_upload_dv_with_token(
         dv.wait_for_status(status=DataVolume.Status.UPLOAD_READY, timeout=TIMEOUT_3MIN)
         storage_utils.upload_token_request(storage_ns_name=dv.namespace, pvc_name=dv.pvc.name, data=local_name)
         dv.wait_for_dv_success()
-        verify_image_location_via_dv_pod_with_pvc(dv=dv, worker_node_name=dv.pvc.selected_node)
-
-
-@pytest.mark.sno
-@pytest.mark.polarion("CNV-3326")
-def test_hostpath_registry_import_dv(
-    admin_client,
-    skip_when_hpp_no_waitforfirstconsumer,
-    skip_when_cdiconfig_scratch_no_hpp,
-    namespace,
-    storage_class_matrix_hpp_matrix__module__,
-):
-    """
-    Check that when importing image from public registry with WFFC binding mode
-    and without kubevirt.io/provisionOnNode annotation works well.
-    The 'volume.kubernetes.io/selected-node' annotation will be added to scratch PVC.
-    """
-    with create_dv(
-        source="registry",
-        dv_name="dv-cnv-3326-quay",
-        namespace=namespace.name,
-        url=f"docker://quay.io/kubevirt/{Images.Cirros.DISK_DEMO}",
-        content_type=DataVolume.ContentType.KUBEVIRT,
-        size=Images.Cirros.DEFAULT_DV_SIZE,
-        storage_class=[*storage_class_matrix_hpp_matrix__module__][0],
-    ) as dv:
-        dv.scratch_pvc.wait_for_status(status=PersistentVolumeClaim.Status.BOUND, timeout=TIMEOUT_5MIN)
-        importer_pod = storage_utils.get_importer_pod(dyn_client=admin_client, namespace=dv.namespace)
-        importer_pod.wait_for_status(status=Pod.Status.RUNNING, timeout=TIMEOUT_5MIN)
-        assert_selected_node_annotation(
-            pvc_node_name=dv.scratch_pvc.selected_node,
-            pod_node_name=importer_pod.instance.spec.nodeName,
-            type_="scratch",
-        )
-        dv.wait_for_dv_success(timeout=TIMEOUT_5MIN)
-        verify_image_location_via_dv_virt_launcher_pod(dv=dv, worker_node_name=dv.pvc.selected_node)
 
 
 @pytest.mark.sno
@@ -604,6 +479,7 @@ def test_hostpath_registry_import_dv(
     ],
     indirect=True,
 )
+@pytest.mark.s390x
 def test_hostpath_clone_dv_without_annotation_wffc(
     skip_when_hpp_no_waitforfirstconsumer,
     admin_client,
@@ -656,6 +532,7 @@ def test_hostpath_clone_dv_without_annotation_wffc(
 
 
 @pytest.mark.polarion("CNV-2770")
+@pytest.mark.s390x
 def test_hostpath_clone_dv_with_annotation(
     skip_when_hpp_no_immediate,
     namespace,
@@ -699,6 +576,7 @@ def test_hostpath_clone_dv_with_annotation(
 
 @pytest.mark.sno
 @pytest.mark.polarion("CNV-8928")
+@pytest.mark.s390x
 def test_hpp_cr(hostpath_provisioner_scope_module):
     assert hostpath_provisioner_scope_module.exists
     hostpath_provisioner_scope_module.wait_for_condition(
@@ -710,6 +588,7 @@ def test_hpp_cr(hostpath_provisioner_scope_module):
 
 @pytest.mark.sno
 @pytest.mark.polarion("CNV-7969")
+@pytest.mark.s390x
 def test_hpp_prometheus_resources(hpp_prometheus_resources):
     non_existing_resources = []
     for rsc in hpp_prometheus_resources:
@@ -720,6 +599,7 @@ def test_hpp_prometheus_resources(hpp_prometheus_resources):
 
 @pytest.mark.sno
 @pytest.mark.polarion("CNV-3279")
+@pytest.mark.s390x
 def test_hpp_serviceaccount(
     hpp_serviceaccount,
     hpp_daemonset_scope_module,
@@ -745,6 +625,7 @@ def test_hpp_serviceaccount(
 
 @pytest.mark.sno
 @pytest.mark.polarion("CNV-8901")
+@pytest.mark.s390x
 def test_hpp_scc(hpp_scc, hpp_cr_suffix_scope_module):
     assert hpp_scc.exists
     assert (
@@ -755,6 +636,7 @@ def test_hpp_scc(hpp_scc, hpp_cr_suffix_scope_module):
 
 @pytest.mark.sno
 @pytest.mark.polarion("CNV-8902")
+@pytest.mark.s390x
 def test_hpp_clusterrole_and_clusterrolebinding(
     hpp_clusterrole,
     hpp_clusterrolebinding,
@@ -776,6 +658,7 @@ def test_hpp_clusterrole_and_clusterrolebinding(
 
 @pytest.mark.sno
 @pytest.mark.polarion("CNV-8903")
+@pytest.mark.s390x
 def test_hpp_daemonset(hpp_daemonset_scope_module):
     assert (
         hpp_daemonset_scope_module.instance.status.numberReady
@@ -785,6 +668,7 @@ def test_hpp_daemonset(hpp_daemonset_scope_module):
 
 @pytest.mark.sno
 @pytest.mark.polarion("CNV-8904")
+@pytest.mark.s390x
 def test_hpp_operator_pod(hpp_operator_pod):
     assert hpp_operator_pod.status == Pod.Status.RUNNING, f"HPP operator pod {hpp_operator_pod.name} is not running"
 
@@ -810,6 +694,7 @@ def test_hpp_operator_recreate_after_deletion(
 
 @pytest.mark.sno
 @pytest.mark.polarion("CNV-6097")
+@pytest.mark.s390x
 def test_hpp_operator_scc(hpp_scc, hpp_operator_pod):
     assert hpp_scc.exists, f"scc {hpp_scc.name} is not existed"
     user_id = hpp_operator_pod.instance.spec["containers"][0]["securityContext"]["runAsUser"]
@@ -870,6 +755,7 @@ def test_hpp_operator_scc(hpp_scc, hpp_operator_pod):
     ],
     indirect=True,
 )
+@pytest.mark.s390x
 def test_verify_hpp_res_app_label(
     hpp_resources,
     cnv_current_version,

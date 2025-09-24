@@ -86,6 +86,7 @@ def importer_pod(admin_client, namespace):
     ],
     indirect=True,
 )
+@pytest.mark.s390x
 def test_dv_template_has_the_same_priority_as_vm_when_not_specified(
     priority_class,
     vm_with_priority_class,
@@ -105,12 +106,13 @@ def test_dv_template_has_the_same_priority_as_vm_when_not_specified(
             marks=(
                 pytest.mark.polarion("CNV-6811"),
                 pytest.mark.sno(),
-                pytest.mark.gating(),
+                pytest.mark.gating,
             ),
         ),
     ],
     indirect=True,
 )
+@pytest.mark.s390x
 def test_dv_template_has_the_different_priority_as_vm_when_specify(
     priority_class, vm_with_priority_class, importer_pod
 ):

@@ -11,12 +11,14 @@ from ocp_resources.service_account import ServiceAccount
 from ocp_resources.virtual_service import VirtualService
 from timeout_sampler import TimeoutExpiredError, TimeoutSampler
 
-from tests.network.constants import HTTPBIN_COMMAND, HTTPBIN_IMAGE, SERVICE_MESH_PORT
+from tests.network.constants import HTTPBIN_IMAGE
 from tests.network.service_mesh.constants import (
+    AUTH_COMMAND,
     DESTINATION_RULE_TYPE,
     GATEWAY_SELECTOR,
     GATEWAY_TYPE,
     HTTP_PROTOCOL,
+    HTTPBIN_COMMAND,
     INGRESS_SERVICE,
     PEER_AUTHENTICATION_TYPE,
     SERVER_DEMO_HOST,
@@ -24,10 +26,11 @@ from tests.network.service_mesh.constants import (
     SERVER_DEPLOYMENT_STRATEGY,
     SERVER_V1_IMAGE,
     SERVER_V2_IMAGE,
+    SERVICE_MESH_PORT,
     VERSION_2_DEPLOYMENT,
     VIRTUAL_SERVICE_TYPE,
 )
-from tests.network.service_mesh.utils import authentication_request, traffic_management_request
+from tests.network.service_mesh.utils import run_console_command, traffic_management_request
 from tests.network.utils import (
     FedoraVirtualMachineForServiceMesh,
     ServiceMeshDeployments,
@@ -35,7 +38,7 @@ from tests.network.utils import (
 )
 from utilities.constants import PORT_80, TIMEOUT_4MIN, TIMEOUT_10SEC
 from utilities.infra import add_scc_to_service_account, create_ns, label_project, unique_name
-from utilities.virt import vm_console_run_commands, wait_for_console
+from utilities.virt import vm_console_run_commands
 
 LOGGER = logging.getLogger(__name__)
 
@@ -258,22 +261,6 @@ def outside_mesh_vm_fedora_with_service_mesh_annotation(
         yield vm
 
 
-@pytest.fixture(scope="module")
-def service_mesh_vm_console_connection_ready(vm_fedora_with_service_mesh_annotation):
-    wait_for_console(
-        vm=vm_fedora_with_service_mesh_annotation,
-    )
-
-
-@pytest.fixture(scope="module")
-def outside_mesh_console_ready_vm(
-    outside_mesh_vm_fedora_with_service_mesh_annotation,
-):
-    wait_for_console(
-        vm=outside_mesh_vm_fedora_with_service_mesh_annotation,
-    )
-
-
 @pytest.fixture(scope="class")
 def server_deployment_v1(service_mesh_tests_namespace):
     with ServiceMeshDeployments(
@@ -356,7 +343,6 @@ def traffic_management_service_mesh_convergence(
     destination_rule_service_mesh,
     virtual_service_mesh_service,
     service_mesh_ingress_service_addr,
-    service_mesh_vm_console_connection_ready,
 ):
     wait_service_mesh_components_convergence(
         func=traffic_management_request,
@@ -426,12 +412,11 @@ def peer_authentication_service_mesh_deployment(
     vm_fedora_with_service_mesh_annotation,
     ns_outside_of_service_mesh,
     httpbin_service_service_mesh,
-    service_mesh_vm_console_connection_ready,
 ):
     wait_service_mesh_components_convergence(
-        func=authentication_request,
+        func=run_console_command,
         vm=vm_fedora_with_service_mesh_annotation,
-        service=httpbin_service_service_mesh.app_name,
+        command=AUTH_COMMAND.format(service=httpbin_service_service_mesh.app_name),
     )
 
 

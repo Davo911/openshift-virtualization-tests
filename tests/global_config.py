@@ -26,10 +26,6 @@ from utilities.constants import (
     HPP_CAPABILITIES,
     IPV4_STR,
     IPV6_STR,
-    KUBEVIRT_VMI_CPU_SYSTEM_USAGE_SECONDS_TOTAL_QUERY_STR,
-    KUBEVIRT_VMI_CPU_USAGE_SECONDS_TOTAL_QUERY_STR,
-    KUBEVIRT_VMI_CPU_USER_USAGE_SECONDS_TOTAL_QUERY_STR,
-    KUBEVIRT_VMI_VCPU_DELAY_SECONDS_TOTAL_QUERY_STR,
     LINUX_BRIDGE,
     MONITORING_METRICS,
     OS_FLAVOR_FEDORA,
@@ -133,13 +129,6 @@ cnv_vm_resource_requests_units_matrix = [
 
 cnv_vmi_monitoring_metrics_matrix = MONITORING_METRICS
 
-cnv_cpu_usage_metrics_matrix = [
-    KUBEVIRT_VMI_VCPU_DELAY_SECONDS_TOTAL_QUERY_STR,
-    KUBEVIRT_VMI_CPU_USER_USAGE_SECONDS_TOTAL_QUERY_STR,
-    KUBEVIRT_VMI_CPU_SYSTEM_USAGE_SECONDS_TOTAL_QUERY_STR,
-    KUBEVIRT_VMI_CPU_USAGE_SECONDS_TOTAL_QUERY_STR,
-]
-
 bridge_device_matrix = [LINUX_BRIDGE, OVS_BRIDGE]
 
 storage_class_matrix = [
@@ -161,8 +150,8 @@ default_storage_class, default_storage_class_configuration = _get_default_storag
 default_volume_mode = default_storage_class_configuration["volume_mode"]
 default_access_mode = default_storage_class_configuration["access_mode"]
 
-storage_class_for_storage_migration_a = HppCsiStorageClass.Name.HOSTPATH_CSI_BASIC
-storage_class_for_storage_migration_b = StorageClassNames.CEPH_RBD_VIRTUALIZATION
+storage_class_a = HppCsiStorageClass.Name.HOSTPATH_CSI_BASIC
+storage_class_b = StorageClassNames.CEPH_RBD_VIRTUALIZATION
 
 link_aggregation_mode_matrix = [
     "active-backup",

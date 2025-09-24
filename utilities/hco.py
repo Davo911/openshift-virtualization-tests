@@ -2,7 +2,7 @@ import json
 import logging
 from contextlib import contextmanager
 
-from kubernetes.dynamic.exceptions import ResourceNotFoundError
+from kubernetes.dynamic.exceptions import NotFoundError, ResourceNotFoundError
 from ocp_resources.cdi import CDI
 from ocp_resources.data_source import DataSource
 from ocp_resources.hyperconverged import HyperConverged
@@ -24,6 +24,8 @@ from utilities.constants import (
     SSP_CR_COMMON_TEMPLATES_LIST_KEY_NAME,
     TIMEOUT_2MIN,
     TIMEOUT_4MIN,
+    TIMEOUT_5MIN,
+    TIMEOUT_5SEC,
     TIMEOUT_10MIN,
     TIMEOUT_30MIN,
     StorageClassNames,
@@ -181,7 +183,9 @@ def wait_for_dp(dp):
         raise
 
 
-def apply_np_changes(admin_client, hco, hco_namespace, infra_placement=None, workloads_placement=None):
+def apply_np_changes(
+    admin_client, hco, hco_namespace, infra_placement=None, workloads_placement=None, exclude_deployments=None
+):
     current_infra = hco.instance.to_dict()["spec"].get("infra")
     current_workloads = hco.instance.to_dict()["spec"].get("workloads")
     target_infra = infra_placement if infra_placement is not None else current_infra
@@ -196,19 +200,24 @@ def apply_np_changes(admin_client, hco, hco_namespace, infra_placement=None, wor
         LOGGER.info(f"Updating HCO with node placement. {patch}")
         editor = ResourceEditor(patches={hco: patch})
         editor.update(backup_resources=False)
-        wait_for_hco_post_update_stable_state(admin_client=admin_client, hco_namespace=hco_namespace)
+        wait_for_hco_post_update_stable_state(
+            admin_client=admin_client, hco_namespace=hco_namespace, exclude_deployments=exclude_deployments
+        )
     else:
         LOGGER.info("No actual changes to node placement configuration, skipping")
 
 
-def wait_for_hco_post_update_stable_state(admin_client, hco_namespace):
+def wait_for_hco_post_update_stable_state(admin_client, hco_namespace, exclude_deployments=None):
     """
     Waits for hco to reach stable state post hco update
 
     Args:
         admin_client (DynamicClient): Dynamic client object
         hco_namespace (Namespace): Namespace object
+        exclude_deployments (list): List of deployment names to exclude from verification
     """
+    exclude_deployments = exclude_deployments or []
+
     LOGGER.info("Waiting for all HCO conditions to detect that it's back to a stable configuration.")
     wait_for_hco_conditions(
         admin_client=admin_client,
@@ -235,7 +244,10 @@ def wait_for_hco_post_update_stable_state(admin_client, hco_namespace):
         admin_client=admin_client,
         namespace=hco_namespace.name,
     ):
-        wait_for_dp(dp=deployment)
+        if deployment.name not in exclude_deployments:
+            wait_for_dp(dp=deployment)
+        else:
+            LOGGER.info(f"Skipping deployment {deployment.name} verification as it is excluded: {exclude_deployments}.")
     utilities.infra.wait_for_pods_running(
         admin_client=admin_client,
         namespace=hco_namespace,
@@ -510,3 +522,39 @@ def update_hco_templates_spec(
             name=custom_datasource_name,
             namespace=golden_images_namespace.name,
         ).clean_up()
+
+
+@contextmanager
+def enabled_aaq_in_hco(client, hco_namespace, hyperconverged_resource, enable_acrq_support=False):
+    patches = {hyperconverged_resource: {"spec": {"enableApplicationAwareQuota": True}}}
+    if enable_acrq_support:
+        patches[hyperconverged_resource]["spec"]["applicationAwareConfig"] = {
+            "allowApplicationAwareClusterResourceQuota": True
+        }
+
+    with ResourceEditorValidateHCOReconcile(
+        patches=patches,
+        list_resource_reconcile=[KubeVirt],
+        wait_for_reconcile_post_update=True,
+    ):
+        yield
+    # need to wait when all AAQ system pods removed
+    samples = TimeoutSampler(
+        wait_timeout=TIMEOUT_5MIN,
+        sleep=TIMEOUT_5SEC,
+        func=utilities.infra.get_pod_by_name_prefix,
+        dyn_client=client,
+        pod_prefix="aaq-(controller|server)",
+        namespace=hco_namespace.name,
+        get_all=True,
+    )
+    sample = None
+    try:
+        for sample in samples:
+            if not sample:
+                break
+    except TimeoutExpiredError:
+        LOGGER.error(f"Some AAQ pods still present: {sample}")
+        raise
+    except (NotFoundError, ResourceNotFoundError):
+        LOGGER.info("AAQ system PODs removed.")
