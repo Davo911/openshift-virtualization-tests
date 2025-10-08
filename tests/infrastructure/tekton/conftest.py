@@ -7,7 +7,7 @@ import yaml
 from ocp_resources.data_source import DataSource
 from ocp_resources.datavolume import DataVolume
 from ocp_resources.pipeline import Pipeline
-from ocp_resources.pipelineruns import PipelineRun
+from ocp_resources.pipeline_run import PipelineRun
 from ocp_resources.resource import ResourceEditor
 from ocp_resources.secret import Secret
 from ocp_resources.task import Task
